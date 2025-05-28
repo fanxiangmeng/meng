@@ -1,0 +1,211 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import xgboost as xgb
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.preprocessing import StandardScaler
+from scipy import stats
+
+# 设置matplotlib支持中文显示
+plt.rcParams['font.sans-serif'] = ['SimHei']
+plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['axes.unicode_minus'] = False
+
+
+def add_noise(X, noise_factor=0.05):
+    noise = np.random.normal(loc=0.0, scale=noise_factor, size=X.shape)
+    X_noisy = X + noise
+    return X_noisy
+
+
+def remove_data_by_indices(data, indices_to_remove):
+    mask = np.ones(len(data), dtype=bool)
+    mask[indices_to_remove] = True
+
+    if isinstance(data, pd.DataFrame):
+        filtered_data = data[mask]
+    elif isinstance(data, np.ndarray):
+        filtered_data = data[mask]
+    elif isinstance(data, list):
+        filtered_data = [data[i] for i in range(len(data)) if i not in indices_to_remove]
+    else:
+        raise ValueError("数据类型不支持，请使用 NumPy 数组、Pandas DataFrame 或列表。")
+
+    return filtered_data
+
+
+if __name__ == '__main__':
+    # 设置固定的随机种子，确保可重现性
+    random_state = 42
+    np.random.seed(random_state)  # 设置随机种子
+    file_path = r"C:\Users\Administrator\Desktop\0.51n.csv"  # 请修改为您的数据文件路径
+    data = pd.read_csv(file_path)
+
+    # 打印数据的前几行和数据维度，确保数据正确加载
+    print("数据的前几行：")
+    print(data.head())
+    print("数据的维度：", data.shape)
+
+    # 检查数据列数（本例要求数据有13列）
+    if data.shape[1] != 14:
+        raise ValueError("数据列数不符合预期，应该有14列数据！")
+
+    # 选择特征和目标变量（假设最后一列为目标，其余列为特征）
+    X = data.iloc[:, :-1].values
+    y = data.iloc[:, -1].values
+
+    # 去除异常值（使用 Z-score）——仅对特征进行处理
+    z_scores = np.abs(stats.zscore(X))
+    threshold = 3
+    mask = (z_scores < threshold).all(axis=1)
+    X_cleaned = X[mask]
+    y_cleaned = y[mask]
+
+    # 选择其中20%数据作为测试数据，在增强后会进行去除。
+    len_test = int(len(X_cleaned) * 0.2)
+    # 随机生成索引
+    test_indices = np.random.choice(len(X_cleaned), size=len_test, replace=False)
+
+    X_augmented_list = [X_cleaned]
+    y_augmented_list = [y_cleaned]
+    # 添加噪声进行样本扩增，直到数据量达到原始数据的1倍
+    expansion_factor = 1
+    for _ in range(expansion_factor - 1):
+        X_noisy = add_noise(X_cleaned, noise_factor=0.05)
+        X_augmented_list.append(X_noisy)
+        y_augmented_list.append(y_cleaned)
+
+    # 合并原始数据和增强数据
+    X_augmented = np.vstack(X_augmented_list)
+    y_augmented = np.hstack(y_augmented_list)
+
+    # 填充缺失值为中值
+    median_values = np.nanmedian(X_augmented, axis=0)
+    nan_mask = np.isnan(X_augmented)
+    X_augmented[nan_mask] = np.take(median_values, np.where(nan_mask)[1])
+
+    # 使用 NumPy 对数据进行归一化 (只处理X，不处理y)
+    min_values = np.min(X_augmented, axis=0)
+    max_values = np.max(X_augmented, axis=0)
+    X_normalized = (X_augmented - min_values) / (max_values - min_values)
+
+    # y_augmented 保持原样，不做偏移处理！
+
+    # 手动控制选择没有做过数据增强的部分数据作为测试集
+    X_test, y_test = X_normalized[test_indices], y_augmented[test_indices]
+    X_train = remove_data_by_indices(X_normalized, test_indices)
+    y_train = remove_data_by_indices(y_augmented, test_indices)
+
+    # XGBoost 模型训练
+    model = xgb.XGBRegressor(
+        objective='reg:squarederror',
+        random_state=random_state,
+        max_depth=2,  # 预剪枝参数
+        min_child_weight=1,  # 预剪枝参数
+        gamma=0.2,  # 预剪枝参数
+        reg_lambda=0.5,  # L2 正则化
+        reg_alpha=0.2  # L1 正则化
+    )
+    best_model = model.fit(X_train, y_train)
+    y_pred_train = best_model.predict(X_train)
+    y_pred_test = best_model.predict(X_test)
+
+    # 计算评估指标
+    train_r2 = r2_score(y_train, y_pred_train)
+    test_r2 = r2_score(y_test, y_pred_test)
+    mse_test = mean_squared_error(y_test, y_pred_test)
+    mae_test = mean_absolute_error(y_test, y_pred_test)
+
+    # 打印评估结果
+    print("\n训练集评估结果：")
+    print(f"R² (训练集): {train_r2:.4f}")
+    print("\n测试集评估结果：")
+    print(f"R² (测试集): {test_r2:.4f}")
+    print(f"MSE (测试集): {mse_test:.4f}")
+    print(f"MAE (测试集): {mae_test:.4f}")
+
+    # 设置全局字体为Arial
+    plt.rcParams['font.family'] = 'Arial'
+
+    # 创建图形框架
+    plt.figure(figsize=(12, 10))
+    g = sns.JointGrid(height=8, ratio=5, space=0)
+
+    # 绘制散点图（带边缘颜色）
+    scatter_train = g.ax_joint.scatter(y_train, y_pred_train, color='blue', edgecolor='white',
+                                       alpha=0.7, s=60, linewidth=0.5)
+    scatter_test = g.ax_joint.scatter(y_test, y_pred_test, color='green', edgecolor='white',
+                                      alpha=0.7, s=60, linewidth=0.5)
+
+    # 绘制对角线
+    min_val = min(min(y_train), min(y_test))
+    max_val = max(max(y_train), max(y_test))
+    g.ax_joint.plot([min_val, max_val], [min_val, max_val],
+                    color='red', linestyle='--', linewidth=1.5, label="Ideal line")
+
+    # 添加R²文本标注（移除边框）
+    text_str = f'Train R² = {train_r2:.3f}\nTest R² = {test_r2:.3f}'
+    g.ax_joint.text(0.05, 0.95, text_str, transform=g.ax_joint.transAxes,
+                    fontsize=26, fontname='Arial',
+                    verticalalignment='top')  # 移除bbox参数
+
+    # 设置坐标轴标签
+    g.ax_joint.set_xlabel('True Values', fontsize=20, fontname='Arial')
+    g.ax_joint.set_ylabel('Predicted Values', fontsize=20, fontname='Arial')
+
+
+
+    # 设置坐标轴刻度字体
+    g.ax_joint.tick_params(axis='both', which='major', labelsize=18)
+
+    # 添加上方直方图
+    hist_true = sns.histplot(x=y_train, ax=g.ax_marg_x, color='blue', alpha=0.5,
+                             kde=True, linewidth=0)
+    sns.histplot(x=y_test, ax=g.ax_marg_x, color='green', alpha=0.5,
+                 kde=True, linewidth=0)
+
+    # 添加右侧直方图
+    hist_pred = sns.histplot(y=y_pred_train, ax=g.ax_marg_y, color='blue', alpha=0.5,
+                             kde=True, linewidth=0)
+    sns.histplot(y=y_pred_test, ax=g.ax_marg_y, color='green', alpha=0.5,
+                 kde=True, linewidth=0)
+
+    # 设置图形样式
+    for ax in [g.ax_joint, g.ax_marg_x, g.ax_marg_y]:
+        # 设置边框
+        for spine in ax.spines.values():
+            spine.set_color('black')
+            spine.set_linewidth(1.5)
+        # 移除网格
+        ax.grid(False)
+        # 设置刻度标签字体
+        ax.tick_params(labelsize=22)
+
+    # 设置直方图背景色
+    g.ax_marg_x.set_facecolor('white')
+    g.ax_marg_y.set_facecolor('white')
+
+    # 调整直方图位置
+    g.ax_marg_x.set_position([g.ax_joint.get_position().x0,
+                              g.ax_joint.get_position().y1 + 0.01,
+                              g.ax_joint.get_position().width,
+                              0.15])
+    g.ax_marg_y.set_position([g.ax_joint.get_position().x1 + 0.01,
+                              g.ax_joint.get_position().y0,
+                              0.15,
+                              g.ax_joint.get_position().height])
+
+    # 添加图例（设置Arial字体）
+    legend_elements = [
+        plt.Line2D([0], [0], marker='o', color='w', label=f'Train set',
+                   markerfacecolor='blue', markersize=10),
+        plt.Line2D([0], [0], marker='o', color='w', label=f'Test set',
+                   markerfacecolor='green', markersize=10),
+        plt.Line2D([0], [0], color='red', linestyle='--', label='Ideal line')
+    ]
+    legend = g.ax_joint.legend(handles=legend_elements, loc='lower right',
+                               framealpha=0.9, prop={'family': 'Arial', 'size': 16})
+
+    plt.tight_layout()
+    plt.show()
