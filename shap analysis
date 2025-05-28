@@ -1,0 +1,16 @@
+ import shap
+
+    # 创建SHAP解释器
+    explainer = shap.Explainer(best_model)
+
+    # 计算SHAP值（注意：用训练集数据）
+    shap_values = explainer(X_train)
+
+    # 绘制SHAP条形图（特征重要性）
+    plt.figure(figsize=(10, 8))
+    shap.plots.bar(shap_values, max_display=10)  # Top 10重要特征
+    plt.title("基于SHAP的特征重要性", fontsize=18)
+    plt.show()
+
+    # 绘制SHAP summary plot（带方向性）
+    shap.summary_plot(shap_values, features=X_train, feature_names=[f'Feature {i+1}' for i in range(X_train.shape[1])])
