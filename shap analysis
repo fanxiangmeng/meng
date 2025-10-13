@@ -1,16 +1,35 @@
- import shap
-
-    # 创建SHAP解释器
+# 创建SHAP解释器
     explainer = shap.Explainer(best_model)
 
     # 计算SHAP值（注意：用训练集数据）
     shap_values = explainer(X_train)
 
-    # 绘制SHAP条形图（特征重要性）
+    # SHAP 条形图（颜色修改为 #7F7FFF）
     plt.figure(figsize=(10, 8))
-    shap.plots.bar(shap_values, max_display=10)  # Top 10重要特征
-    plt.title("基于SHAP的特征重要性", fontsize=18)
-    plt.show()
+    # 注意：shap.plots.bar 在某些 shap 版本不支持 color 参数，因此使用 summary_plot(plot_type='bar') 指定 color
+    try:
+        shap.plots.bar(shap_values, max_display=10)
+    except TypeError:
+        # 退回到 summary_plot 的 bar 模式并指定颜色
+        shap.summary_plot(shap_values, features=X_train, feature_names=[f'Feature {i + 1}' for i in range(X_train.shape[1])],
+                          plot_type="bar", color="#7F7FFF")
+    else:
+        # 如果 shap.plots.bar 成功调用，这里再手动绘制单色条形图以确保颜色一致（兼容性保护）
+        import numpy as _np
+        mean_abs_shap = _np.abs(shap_values.values).mean(axis=0)
+        feat_names = [f'Feature {i + 1}' for i in range(X_train.shape[1])]
+        sorted_idx = _np.argsort(mean_abs_shap)[::-1]
+        top_n = min(10, len(feat_names))
+        plt.barh([feat_names[i] for i in sorted_idx[:top_n]][::-1],
+                 mean_abs_shap[sorted_idx[:top_n]][::-1],
+                 color="#7F7FFF")
+        plt.gca().invert_yaxis()
+        plt.title("基于SHAP的特征重要性", fontsize=18, fontname="Arial")
+        plt.xlabel("平均 |SHAP 值|", fontsize=14, fontname="Arial")
+        plt.tight_layout()
+        plt.show()
 
     # 绘制SHAP summary plot（带方向性）
-    shap.summary_plot(shap_values, features=X_train, feature_names=[f'Feature {i+1}' for i in range(X_train.shape[1])])
+    shap.summary_plot(shap_values, features=X_train,
+                      feature_names=[f'Feature {i + 1}' for i in range(X_train.shape[1])])
+    plt.show()
