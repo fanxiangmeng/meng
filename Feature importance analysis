@@ -1,45 +1,61 @@
-import pandas as pd
 import numpy as np
-import seaborn as sns
+import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib import rcParams
+import seaborn as sns
+from matplotlib.colors import LinearSegmentedColormap
 
-# 设置全局字体为 Times New Roman
-rcParams['font.family'] = 'Arial'
-# 避免负号乱码
-plt.rcParams['axes.unicode_minus'] = False
+# ---------------- user config ----------------
+excel_path = r"C:\Users\Administrator\Desktop\支撑数据最终版本\Supporting Input Dataset.xlsx"  # <- 修改为你的文件路径
+sheet_name = "Sheet1"   # <- 如果不是 Sheet1，改成你的 sheet 名
+figsize = (12, 10)
+tick_fontsize = 8       # 若特征很多可设为6-8
+# ---------------------------------------------
 
-# 读取 CSV 文件
-file_path = r"C:\Users\Administrator\Desktop\1.csv"
-data = pd.read_csv(file_path)
+# 读取数据（假设数据为数值型特征表，第一行是列名）
+df = pd.read_excel(excel_path, sheet_name=sheet_name)
+numeric_df = df.select_dtypes(include=[np.number])  # 只用数值列计算相关性
+cols = numeric_df.columns.tolist()
 
-# 只保留数值型列
-numeric_data = data.select_dtypes(include=[np.number])
+# 计算皮尔森相关系数矩阵
+corr = numeric_df.corr(method="pearson")
 
-# 计算相关性矩阵
-corr = numeric_data.corr()
+# 自定义从 蓝 → 浅蓝 → 白 → 橙 → 红 的 colormap
+colors = ["#3D50C4", "#7497f4", "#FFFFFF", "#E27557", "#B7132A"]
+cmap = LinearSegmentedColormap.from_list("lightblue_blue_white_red_orange", colors)
 
-# 设置画布大小
-plt.figure(figsize=(12, 10))
+# 设置全局字体为 Arial
+plt.rcParams["font.family"] = "Arial"
+plt.rcParams["font.sans-serif"] = ["Arial"]
+plt.rcParams["axes.unicode_minus"] = False
 
-# 生成热图（不显示数字）
-sns.heatmap(corr,
-            cmap='coolwarm',
-            vmin=-1, vmax=1,
-            annot=False,
-            linewidths=0.5,
-            square=True,
-            cbar_kws={"shrink": 0.75})
+# 绘图
+plt.figure(figsize=figsize)
+ax = sns.heatmap(
+    corr,
+    cmap=cmap,
+    center=0,          # 白色居中
+    vmin=-1,
+    vmax=1,
+    annot=True,        # ✅ 显示数值
+    fmt=".2f",         # 数值保留两位小数
+    annot_kws={"size": 10, "fontweight": "bold", "fontname": "Arial"},  # ✅ 数值字体更大 + 加粗 + Arial
+    linewidths=0,      # 色块间无间隔
+    linecolor=None,
+    square=False,
+    cbar_kws={"shrink": 0.8, "label": "Pearson r"}
+)
 
-# 添加标题
-plt.title('特征相关性热图', fontsize=20)
+# 确保全部标签都显示，并使用 Arial 字体
+ax.set_xticks(np.arange(len(cols)) + 0.5)
+ax.set_yticks(np.arange(len(cols)) + 0.5)
+ax.set_xticklabels(cols, rotation=90, ha="center", fontsize=tick_fontsize, fontname="Arial")
+ax.set_yticklabels(cols, rotation=0, fontsize=tick_fontsize, fontname="Arial")
 
-# 设置坐标轴标签字体
-plt.xticks(rotation=45, ha='right', fontsize=10)
-plt.yticks(fontsize=10)
-
-# 紧凑布局
+plt.title("皮尔森相关性热图", fontsize=14, fontname="Arial", fontweight="bold")
 plt.tight_layout()
 
-# 显示图
+# 可选：保存图像到桌面（取消注释并修改路径）
+# save_path = r"C:\Users\Administrator\Desktop\pearson_heatmap_gradient.png"
+# plt.savefig(save_path, dpi=300)
+
 plt.show()
