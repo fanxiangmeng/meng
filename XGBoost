@@ -4,15 +4,19 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import xgboost as xgb
-import shap  # <- 新增：导入 shap
+import shap
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
 from scipy import stats
 
-# 设置matplotlib支持中文显示
-plt.rcParams['font.sans-serif'] = ['SimHei']
-plt.rcParams['font.family'] = 'sans-serif'
-plt.rcParams['axes.unicode_minus'] = False
+# 设置matplotlib字体 - 修复中文显示问题
+try:
+    plt.rcParams['font.family'] = ['SimHei', 'DejaVu Sans', 'Arial']
+    plt.rcParams['axes.unicode_minus'] = False
+except:
+    # 如果SimHei不可用，使用系统默认字体
+    plt.rcParams['font.family'] = ['DejaVu Sans', 'Arial']
+    plt.rcParams['axes.unicode_minus'] = False
 
 
 def add_noise(X, noise_factor=0.05):
@@ -41,21 +45,44 @@ if __name__ == '__main__':
     # 设置固定的随机种子，确保可重现性
     random_state = 42
     np.random.seed(random_state)  # 设置随机种子
-    file_path = r"C:\Users\Administrator\Desktop\支撑数据 - 副本\retuzong 7.csv"  # 请修改为您的数据文件路径
-    data = pd.read_csv(file_path)
+
+    # 文件路径 - 修复编码问题
+    file_path = r"C:\Users\Administrator\Desktop\机器学习11.10\Supporting Input Dataset.csv"
+
+    # 尝试不同编码方式读取文件
+    encodings = ['utf-8', 'gbk', 'gb2312', 'latin1', 'cp1252']
+    data = None
+
+    for encoding in encodings:
+        try:
+            data = pd.read_csv(file_path, encoding=encoding)
+            print(f"成功使用 {encoding} 编码读取文件")
+            break
+        except UnicodeDecodeError:
+            print(f"{encoding} 编码失败，尝试下一种...")
+            continue
+        except Exception as e:
+            print(f"{encoding} 编码错误: {e}")
+            continue
+
+    if data is None:
+        raise ValueError("无法读取文件，请检查文件路径和编码")
 
     # 打印数据的前几行和数据维度，确保数据正确加载
     print("数据的前几行：")
     print(data.head())
     print("数据的维度：", data.shape)
 
-    # 检查数据列数（本例要求数据有13列）
+    # 检查数据列数
     if data.shape[1] != 16:
         raise ValueError("数据列数不符合预期，应该有16列数据！")
 
     # 选择特征和目标变量（假设最后一列为目标，其余列为特征）
     X = data.iloc[:, :-1].values
     y = data.iloc[:, -1].values
+
+    # === 将第一列放大 100 倍 ===
+    X[:, 0] = X[:, 0] * 100.0
 
     # 去除异常值（使用 Z-score）——仅对特征进行处理
     z_scores = np.abs(stats.zscore(X))
@@ -113,9 +140,9 @@ if __name__ == '__main__':
         random_state=random_state,
         max_depth=3,  # 预剪枝参数
         min_child_weight=1,  # 预剪枝参数
-        gamma=0.2,  # 预剪枝参数
-        reg_lambda=0.5,  # L2 正则化
-        reg_alpha=0.2  # L1 正则化
+        gamma=0.1,  # 预剪枝参数
+        reg_lambda=0.3,  # L2 正则化
+        reg_alpha=0.4  # L1 正则化
     )
     best_model = model.fit(X_train, y_train)
     y_pred_train = best_model.predict(X_train)
@@ -135,7 +162,7 @@ if __name__ == '__main__':
     print(f"MSE (测试集): {mse_test:.4f}")
     print(f"MAE (测试集): {mae_test:.4f}")
 
-    # 设置全局字体为Arial
+    # 设置全局字体为Arial，避免中文显示问题
     plt.rcParams['font.family'] = 'Arial'
 
     # 创建图形框架
@@ -154,13 +181,13 @@ if __name__ == '__main__':
     g.ax_joint.plot([min_val, max_val], [min_val, max_val],
                     color='red', linestyle='--', linewidth=1.5, label="Ideal line")
 
-    # 添加R²文本标注（移除边框）
+    # 添加R²文本标注（使用英文避免字体问题）
     text_str = f'Train R² = {train_r2:.3f}\nTest R² = {test_r2:.3f}'
     g.ax_joint.text(0.05, 0.95, text_str, transform=g.ax_joint.transAxes,
                     fontsize=26, fontname='Arial',
-                    verticalalignment='top')  # 移除bbox参数
+                    verticalalignment='top')
 
-    # 设置坐标轴标签
+    # 设置坐标轴标签（使用英文）
     g.ax_joint.set_xlabel('True Values', fontsize=20, fontname='Arial')
     g.ax_joint.set_ylabel('Predicted Values', fontsize=20, fontname='Arial')
 
@@ -204,7 +231,7 @@ if __name__ == '__main__':
                               0.15,
                               g.ax_joint.get_position().height])
 
-    # 添加图例（设置Arial字体）
+    # 添加图例（使用英文）
     legend_elements = [
         plt.Line2D([0], [0], marker='o', color='w', label=f'Train set',
                    markerfacecolor='blue', markersize=10),
@@ -214,6 +241,11 @@ if __name__ == '__main__':
     ]
     legend = g.ax_joint.legend(handles=legend_elements, loc='lower right',
                                framealpha=0.9, prop={'family': 'Arial', 'size': 16})
+
+    plt.tight_layout()
+    plt.show()
+
+
 
     plt.tight_layout()
     plt.show()
