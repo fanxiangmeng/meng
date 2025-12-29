@@ -1,25 +1,25 @@
-# --------------------------- 特征分布及与目标值的关系可视化 ---------------------------
+# --------------------------- Feature Distribution and Relationship with Target Visualization ---------------------------
 
-    feature_names = data.columns[:-1]  # 特征列名（最后一列是目标列，不要）
-    target_name = data.columns[-1]     # 目标列名
+feature_names = data.columns[:-1]  # Feature column names (last column is target, exclude)
+target_name = data.columns[-1]     # Target column name
 
-    num_features = len(feature_names)
-    num_cols = 4  # 每行放4个图
-    num_rows = int(np.ceil(num_features / num_cols))  # 自动计算行数
+num_features = len(feature_names)
+num_cols = 4  # 4 plots per row
+num_rows = int(np.ceil(num_features / num_cols))  # Automatically calculate number of rows
 
-    plt.figure(figsize=(4*num_cols, 4*num_rows))
+plt.figure(figsize=(4*num_cols, 4*num_rows))
 
-    for i, feature in enumerate(feature_names):
-        plt.subplot(num_rows, num_cols, i+1)
-        # 使用散点图+密度图表示单特征与目标值的关系
-        sns.scatterplot(x=X_cleaned[:, i], y=y_cleaned, color='royalblue', alpha=0.6, edgecolor='w', s=50)
-        sns.kdeplot(x=X_cleaned[:, i], y=y_cleaned, levels=5, color='orange', linewidths=1.2, fill=False)
+for i, feature in enumerate(feature_names):
+    plt.subplot(num_rows, num_cols, i+1)
+    # Use scatter plot + density plot to show relationship between single feature and target
+    sns.scatterplot(x=X_cleaned[:, i], y=y_cleaned, color='royalblue', alpha=0.6, edgecolor='w', s=50)
+    sns.kdeplot(x=X_cleaned[:, i], y=y_cleaned, levels=5, color='orange', linewidths=1.2, fill=False)
 
-        plt.xlabel(feature, fontsize=12)
-        plt.ylabel(target_name, fontsize=12)
-        plt.title(f'{feature} vs {target_name}', fontsize=14)
-        plt.grid(True)
+    plt.xlabel(feature, fontsize=12)
+    plt.ylabel(target_name, fontsize=12)
+    plt.title(f'{feature} vs {target_name}', fontsize=14)
+    plt.grid(True)
 
-    plt.tight_layout()
-    plt.suptitle('各特征分布与目标值关系图', fontsize=24, y=1.02)
-    plt.show()
+plt.tight_layout()
+plt.suptitle('Feature Distributions and Relationship with Target', fontsize=24, y=1.02)
+plt.show()
