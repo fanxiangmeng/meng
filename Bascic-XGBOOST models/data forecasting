@@ -9,12 +9,12 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
 from scipy import stats
 
-# 设置matplotlib字体 - 修复中文显示问题
+# Set matplotlib fonts - fix display issues
 try:
-    plt.rcParams['font.family'] = ['SimHei', 'DejaVu Sans', 'Arial']
+    plt.rcParams['font.family'] = ['DejaVu Sans', 'Arial']
     plt.rcParams['axes.unicode_minus'] = False
 except:
-    # 如果SimHei不可用，使用系统默认字体
+    # If SimHei is not available, use system default fonts
     plt.rcParams['font.family'] = ['DejaVu Sans', 'Arial']
     plt.rcParams['axes.unicode_minus'] = False
 
@@ -36,192 +36,192 @@ def remove_data_by_indices(data, indices_to_remove):
     elif isinstance(data, list):
         filtered_data = [data[i] for i in range(len(data)) if i not in indices_to_remove]
     else:
-        raise ValueError("数据类型不支持，请使用 NumPy 数组、Pandas DataFrame 或列表。")
+        raise ValueError("Unsupported data type. Please use NumPy arrays, Pandas DataFrame, or lists.")
 
     return filtered_data
 
 
 if __name__ == '__main__':
-    # 设置固定的随机种子，确保可重现性
+    # Set fixed random seed to ensure reproducibility
     random_state = 42
-    np.random.seed(random_state)  # 设置随机种子
+    np.random.seed(random_state)  # Set random seed
 
-    # 文件路径 - 修复编码问题
-    file_path = r"C:\Users\Administrator\Desktop\机器学习11.10\Supporting Input Dataset.csv"
+    # File path - fix encoding issues
+    file_path = r"Supporting Input Dataset.csv"
 
-    # 尝试不同编码方式读取文件
+    # Try different encodings to read the file
     encodings = ['utf-8', 'gbk', 'gb2312', 'latin1', 'cp1252']
     data = None
 
     for encoding in encodings:
         try:
             data = pd.read_csv(file_path, encoding=encoding)
-            print(f"成功使用 {encoding} 编码读取文件")
+            print(f"Successfully read file with {encoding} encoding")
             break
         except UnicodeDecodeError:
-            print(f"{encoding} 编码失败，尝试下一种...")
+            print(f"{encoding} encoding failed, trying next...")
             continue
         except Exception as e:
-            print(f"{encoding} 编码错误: {e}")
+            print(f"{encoding} encoding error: {e}")
             continue
 
     if data is None:
-        raise ValueError("无法读取文件，请检查文件路径和编码")
+        raise ValueError("Unable to read file, please check file path and encoding")
 
-    # 打印数据的前几行和数据维度，确保数据正确加载
-    print("数据的前几行：")
+    # Print first few rows and data dimensions to ensure correct loading
+    print("First few rows of data:")
     print(data.head())
-    print("数据的维度：", data.shape)
+    print("Data dimensions:", data.shape)
 
-    # 检查数据列数
+    # Check number of data columns
     if data.shape[1] != 16:
-        raise ValueError("数据列数不符合预期，应该有16列数据！")
+        raise ValueError("Number of data columns does not meet expectations. Should have 16 columns!")
 
-    # 选择特征和目标变量（假设最后一列为目标，其余列为特征）
+    # Select features and target variables (assuming last column is target, others are features)
     X = data.iloc[:, :-1].values
     y = data.iloc[:, -1].values
 
-    # === 将第一列放大 100 倍 ===
+    # === Scale the first column by 100 times ===
     X[:, 0] = X[:, 0] * 100.0
 
-    # 去除异常值（使用 Z-score）——仅对特征进行处理
+    # Remove outliers (using Z-score) - only process features
     z_scores = np.abs(stats.zscore(X))
     threshold = 3
     mask = (z_scores < threshold).all(axis=1)
     X_cleaned = X[mask]
     y_cleaned = y[mask]
 
-    # 选择其中20%数据作为测试数据，在增强后会进行去除。
+    # Select 20% of data as test data, will be removed after augmentation
     len_test = int(len(X_cleaned) * 0.2)
-    # 随机生成索引
+    # Randomly generate indices
     test_indices = np.random.choice(len(X_cleaned), size=len_test, replace=False)
 
     X_augmented_list = [X_cleaned]
     y_augmented_list = [y_cleaned]
-    # 添加噪声进行样本扩增，直到数据量达到原始数据的1倍
+    # Add noise for sample augmentation until data volume reaches 1 times original data
     expansion_factor = 1
     for _ in range(expansion_factor - 1):
         X_noisy = add_noise(X_cleaned, noise_factor=0.05)
         X_augmented_list.append(X_noisy)
         y_augmented_list.append(y_cleaned)
 
-    # 合并原始数据和增强数据
+    # Merge original and augmented data
     X_augmented = np.vstack(X_augmented_list)
     y_augmented = np.hstack(y_augmented_list)
 
-    # 填充缺失值为中值
+    # Fill missing values with median
     median_values = np.nanmedian(X_augmented, axis=0)
     nan_mask = np.isnan(X_augmented)
     X_augmented[nan_mask] = np.take(median_values, np.where(nan_mask)[1])
 
-    # ----------------- 这里修改为使用 range_values 并加入除零保护 -----------------
-    # 计算每列的 min/max 和范围
+    # ----------------- Modified to use range_values with zero division protection -----------------
+    # Calculate min/max and range for each column
     min_values = np.min(X_augmented, axis=0)
     max_values = np.max(X_augmented, axis=0)
     range_values = max_values - min_values
-    # 防止某列 max == min 导致除以0；把范围为0的列设为1（不会改变归一化结果）
+    # Prevent division by zero when max == min; set range to 1 for columns with zero range (won't change normalization result)
     zero_range = range_values == 0
     if zero_range.any():
         range_values[zero_range] = 1.0
-    # 使用 range_values 完成归一化
+    # Complete normalization using range_values
     X_normalized = (X_augmented - min_values) / range_values
     # -------------------------------------------------------------------------------
 
-    # y_augmented 保持原样，不做偏移处理！
+    # y_augmented remains unchanged, no offset processing!
 
-    # 手动控制选择没有做过数据增强的部分数据作为测试集
+    # Manually select unaugmented data as test set
     X_test, y_test = X_normalized[test_indices], y_augmented[test_indices]
     X_train = remove_data_by_indices(X_normalized, test_indices)
     y_train = remove_data_by_indices(y_augmented, test_indices)
 
-    # XGBoost 模型训练
+    # XGBoost model training
     model = xgb.XGBRegressor(
         objective='reg:squarederror',
         random_state=random_state,
-        max_depth=3,  # 预剪枝参数
-        min_child_weight=1,  # 预剪枝参数
-        gamma=0.1,  # 预剪枝参数
-        reg_lambda=0.3,  # L2 正则化
-        reg_alpha=0.4  # L1 正则化
+        max_depth=3,  # Pre-pruning parameter
+        min_child_weight=1,  # Pre-pruning parameter
+        gamma=0.1,  # Pre-pruning parameter
+        reg_lambda=0.3,  # L2 regularization
+        reg_alpha=0.4  # L1 regularization
     )
     best_model = model.fit(X_train, y_train)
     y_pred_train = best_model.predict(X_train)
     y_pred_test = best_model.predict(X_test)
 
-    # 计算评估指标
+    # Calculate evaluation metrics
     train_r2 = r2_score(y_train, y_pred_train)
     test_r2 = r2_score(y_test, y_pred_test)
     mse_test = mean_squared_error(y_test, y_pred_test)
     mae_test = mean_absolute_error(y_test, y_pred_test)
 
-    # 打印评估结果
-    print("\n训练集评估结果：")
-    print(f"R² (训练集): {train_r2:.4f}")
-    print("\n测试集评估结果：")
-    print(f"R² (测试集): {test_r2:.4f}")
-    print(f"MSE (测试集): {mse_test:.4f}")
-    print(f"MAE (测试集): {mae_test:.4f}")
+    # Print evaluation results
+    print("\nTraining set evaluation results:")
+    print(f"R² (training set): {train_r2:.4f}")
+    print("\nTest set evaluation results:")
+    print(f"R² (test set): {test_r2:.4f}")
+    print(f"MSE (test set): {mse_test:.4f}")
+    print(f"MAE (test set): {mae_test:.4f}")
 
-    # 设置全局字体为Arial，避免中文显示问题
+    # Set global font to Arial to avoid display issues
     plt.rcParams['font.family'] = 'Arial'
 
-    # 创建图形框架
+    # Create figure framework
     plt.figure(figsize=(12, 10))
     g = sns.JointGrid(height=8, ratio=5, space=0)
 
-    # 绘制散点图（带边缘颜色）
+    # Draw scatter plot (with edge colors)
     scatter_train = g.ax_joint.scatter(y_train, y_pred_train, color='blue', edgecolor='white',
                                        alpha=0.7, s=60, linewidth=0.5)
     scatter_test = g.ax_joint.scatter(y_test, y_pred_test, color='green', edgecolor='white',
                                       alpha=0.7, s=60, linewidth=0.5)
 
-    # 绘制对角线
+    # Draw diagonal line
     min_val = min(min(y_train), min(y_test))
     max_val = max(max(y_train), max(y_test))
     g.ax_joint.plot([min_val, max_val], [min_val, max_val],
                     color='red', linestyle='--', linewidth=1.5, label="Ideal line")
 
-    # 添加R²文本标注（使用英文避免字体问题）
+    # Add R² text annotation (using English to avoid font issues)
     text_str = f'Train R² = {train_r2:.3f}\nTest R² = {test_r2:.3f}'
     g.ax_joint.text(0.05, 0.95, text_str, transform=g.ax_joint.transAxes,
                     fontsize=26, fontname='Arial',
                     verticalalignment='top')
 
-    # 设置坐标轴标签（使用英文）
+    # Set axis labels (using English)
     g.ax_joint.set_xlabel('True Values', fontsize=20, fontname='Arial')
     g.ax_joint.set_ylabel('Predicted Values', fontsize=20, fontname='Arial')
 
-    # 设置坐标轴刻度字体
+    # Set axis tick font
     g.ax_joint.tick_params(axis='both', which='major', labelsize=18)
 
-    # 添加上方直方图
+    # Add top histogram
     hist_true = sns.histplot(x=y_train, ax=g.ax_marg_x, color='blue', alpha=0.5,
                              kde=True, linewidth=0)
     sns.histplot(x=y_test, ax=g.ax_marg_x, color='green', alpha=0.5,
                  kde=True, linewidth=0)
 
-    # 添加右侧直方图
+    # Add right histogram
     hist_pred = sns.histplot(y=y_pred_train, ax=g.ax_marg_y, color='blue', alpha=0.5,
                              kde=True, linewidth=0)
     sns.histplot(y=y_pred_test, ax=g.ax_marg_y, color='green', alpha=0.5,
                  kde=True, linewidth=0)
 
-    # 设置图形样式
+    # Set graph style
     for ax in [g.ax_joint, g.ax_marg_x, g.ax_marg_y]:
-        # 设置边框
+        # Set borders
         for spine in ax.spines.values():
             spine.set_color('black')
             spine.set_linewidth(1.5)
-        # 移除网格
+        # Remove grid
         ax.grid(False)
-        # 设置刻度标签字体
+        # Set tick label font
         ax.tick_params(labelsize=22)
 
-    # 设置直方图背景色
+    # Set histogram background colors
     g.ax_marg_x.set_facecolor('white')
     g.ax_marg_y.set_facecolor('white')
 
-    # 调整直方图位置
+    # Adjust histogram positions
     g.ax_marg_x.set_position([g.ax_joint.get_position().x0,
                               g.ax_joint.get_position().y1 + 0.01,
                               g.ax_joint.get_position().width,
@@ -231,7 +231,7 @@ if __name__ == '__main__':
                               0.15,
                               g.ax_joint.get_position().height])
 
-    # 添加图例（使用英文）
+    # Add legend (using English)
     legend_elements = [
         plt.Line2D([0], [0], marker='o', color='w', label=f'Train set',
                    markerfacecolor='blue', markersize=10),
@@ -245,50 +245,48 @@ if __name__ == '__main__':
     plt.tight_layout()
     plt.show()
 
-    # ------------------ 新增：对新数据进行预测并保存到桌面 ------------------
-    # 请把 new_data_path 修改为需要预测的新数据文件（CSV），该文件只应包含特征列（列数需与训练时一致）
+    # ------------------ New: Predict new data and save to desktop ------------------
+    # Please change new_data_path to the new data file (CSV) to be predicted, which should only contain feature columns (number of columns must match training)
     new_data_path = r"C:\Users\Administrator\Desktop\支撑数据 - 副本\out2.csv"
     if os.path.exists(new_data_path):
         new_df = pd.read_csv(new_data_path)
-        # 要求新数据的列数与训练特征列数一致（训练特征数 = 原始 data 的列数 - 1）
+        # New data column count must match training feature count (training feature count = original data columns - 1)
         n_features = data.shape[1] - 1
         if new_df.shape[1] < n_features:
-            raise ValueError(f"新数据列数 {new_df.shape[1]} 少于训练特征数 {n_features}。")
+            raise ValueError(f"New data column count {new_df.shape[1]} is less than training feature count {n_features}.")
         elif new_df.shape[1] > n_features:
-            # 如果新数据包含额外列（例如带有标签列或索引），只取前 n_features 列
+            # If new data contains extra columns (e.g., with label column or index), only take first n_features columns
             new_df = new_df.iloc[:, :n_features]
 
-        # 转为 numpy 并按之前相同的预处理流程：填充缺失（使用训练集 median_values）-> 归一化（使用训练时 min/range）
+        # Convert to numpy and follow same preprocessing pipeline as before: fill missing (using training set median_values) -> normalize (using training min/range)
         new_X = new_df.values.astype(float)
-        # 填充缺失
+        # Fill missing values
         nan_mask_new = np.isnan(new_X)
         if nan_mask_new.any():
             new_X[nan_mask_new] = np.take(median_values, np.where(nan_mask_new)[1])
 
-        # 归一化：使用训练阶段的 min_values 和 range_values
+        # Normalization: Use training phase min_values and range_values
         new_X_normalized = (new_X - min_values) / range_values
 
-        # Diagnostics: 打印新数据归一化范围（前3列）
-        print("新样本归一化后 (first 3 cols) min:", np.round(new_X_normalized.min(axis=0)[:3], 6))
-        print("新样本归一化后 (first 3 cols) max:", np.round(new_X_normalized.max(axis=0)[:3], 6))
+        # Diagnostics: Print new data normalization range (first 3 columns)
+        print("New samples after normalization (first 3 cols) min:", np.round(new_X_normalized.min(axis=0)[:3], 6))
+        print("New samples after normalization (first 3 cols) max:", np.round(new_X_normalized.max(axis=0)[:3], 6))
 
-        # 进行预测
+        # Make predictions
         preds = best_model.predict(new_X_normalized)
 
-        # Diagnostics: 打印部分预测值对比
-        print("示例：y_train[:6] =", np.round(y_train[:6], 6))
-        print("示例：preds[:6]   =", np.round(preds[:6], 6))
+        # Diagnostics: Print some prediction comparisons
+        print("Example: y_train[:6] =", np.round(y_train[:6], 6))
+        print("Example: preds[:6]   =", np.round(preds[:6], 6))
 
-        # 保存预测结果到桌面
+        # Save predictions to desktop
         desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
         save_name = "predictions_from_model.csv"
         save_path = os.path.join(desktop_path, save_name)
 
-        out_df = pd.DataFrame(new_df)  # 保留原始新数据（可能已被截列）
+        out_df = pd.DataFrame(new_df)  # Keep original new data (may have been truncated)
         out_df['prediction'] = preds
         out_df.to_csv(save_path, index=False, encoding='utf-8-sig')
-        print(f"已将预测结果保存到：{save_path}")
+        print(f"Predictions saved to: {save_path}")
     else:
-        print(f"未找到新数据文件：{new_data_path}。如需预测新样本，请将 CSV 放到该路径或修改 new_data_path 变量。")
-
-
+        print(f"New data file not found: {new_data_path}. To predict new samples, please place CSV at this path or modify new_data_path variable.")
