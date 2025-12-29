@@ -5,56 +5,56 @@ import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
 
 # ---------------- user config ----------------
-excel_path = r"C:\Users\Administrator\Desktop\支撑数据最终版本\Supporting Input Dataset.xlsx"  # <- 修改为你的文件路径
-sheet_name = "Sheet1"   # <- 如果不是 Sheet1，改成你的 sheet 名
+excel_path = r"C\Supporting Input Dataset.xlsx"  # <- modify to your file path
+sheet_name = "Sheet1"   # <- if not Sheet1, change to your sheet name
 figsize = (12, 10)
-tick_fontsize = 8       # 若特征很多可设为6-8
+tick_fontsize = 8       # set to 6-8 if many features
 # ---------------------------------------------
 
-# 读取数据（假设数据为数值型特征表，第一行是列名）
+# Read data (assuming data is numerical feature table, first row contains column names)
 df = pd.read_excel(excel_path, sheet_name=sheet_name)
-numeric_df = df.select_dtypes(include=[np.number])  # 只用数值列计算相关性
+numeric_df = df.select_dtypes(include=[np.number])  # use only numerical columns for correlation
 cols = numeric_df.columns.tolist()
 
-# 计算皮尔森相关系数矩阵
+# Calculate Pearson correlation coefficient matrix
 corr = numeric_df.corr(method="pearson")
 
-# 自定义从 蓝 → 浅蓝 → 白 → 橙 → 红 的 colormap
+# Custom colormap from blue → light blue → white → orange → red
 colors = ["#3D50C4", "#7497f4", "#FFFFFF", "#E27557", "#B7132A"]
 cmap = LinearSegmentedColormap.from_list("lightblue_blue_white_red_orange", colors)
 
-# 设置全局字体为 Arial
+# Set global font to Arial
 plt.rcParams["font.family"] = "Arial"
 plt.rcParams["font.sans-serif"] = ["Arial"]
 plt.rcParams["axes.unicode_minus"] = False
 
-# 绘图
+# Plot
 plt.figure(figsize=figsize)
 ax = sns.heatmap(
     corr,
     cmap=cmap,
-    center=0,          # 白色居中
+    center=0,          # white at center
     vmin=-1,
     vmax=1,
-    annot=True,        # ✅ 显示数值
-    fmt=".2f",         # 数值保留两位小数
-    annot_kws={"size": 10, "fontweight": "bold", "fontname": "Arial"},  # ✅ 数值字体更大 + 加粗 + Arial
-    linewidths=0,      # 色块间无间隔
+    annot=True,        # ✅ display values
+    fmt=".2f",         # values with 2 decimal places
+    annot_kws={"size": 10, "fontweight": "bold", "fontname": "Arial"},  # ✅ larger value font + bold + Arial
+    linewidths=0,      # no gaps between color blocks
     linecolor=None,
     square=False,
     cbar_kws={"shrink": 0.8, "label": "Pearson r"}
 )
 
-# 确保全部标签都显示，并使用 Arial 字体
+# Ensure all labels are displayed with Arial font
 ax.set_xticks(np.arange(len(cols)) + 0.5)
 ax.set_yticks(np.arange(len(cols)) + 0.5)
 ax.set_xticklabels(cols, rotation=90, ha="center", fontsize=tick_fontsize, fontname="Arial")
 ax.set_yticklabels(cols, rotation=0, fontsize=tick_fontsize, fontname="Arial")
 
-plt.title("皮尔森相关性热图", fontsize=14, fontname="Arial", fontweight="bold")
+plt.title("Pearson Correlation Heatmap", fontsize=14, fontname="Arial", fontweight="bold")
 plt.tight_layout()
 
-# 可选：保存图像到桌面（取消注释并修改路径）
+# Optional: save image to desktop (uncomment and modify path)
 # save_path = r"C:\Users\Administrator\Desktop\pearson_heatmap_gradient.png"
 # plt.savefig(save_path, dpi=300)
 
