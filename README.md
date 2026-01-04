@@ -23,7 +23,7 @@ The repository includes:
 
 ---
 
-## 2. Repository Structure
+2. Repository Structure
 
 .
 ├── data/
