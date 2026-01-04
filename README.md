@@ -24,7 +24,7 @@ The repository includes:
 ---
 
 2.## Project Structure
-```shell
+
 ├── data/
 │ ├── enzyme_priors/ # Extracted structural and kinetic descriptors from natural AHL lactonases
 │ ├── catalyst_features/ # Feature matrices for dual-atom nanozyme candidates
@@ -51,6 +51,7 @@ The repository includes:
 
 
 ## 3. Requirements
+```shell
 
 The code was developed and tested using Python ≥ 3.9.
 
@@ -77,6 +78,8 @@ Feature importance and structure–activity relationships are analyzed to reveal
 Steady-state kinetic parameters (Km, kcat) are obtained by fitting experimental hydrolysis data using Michaelis–Menten models.
 
 Example usage:
+## Project Structure
+```shell
 python analysis/kinetics_fit.py --input data/kinetics/example.csv
 6. Reproducibility Notes
 All random seeds used in model training are explicitly fixed.
