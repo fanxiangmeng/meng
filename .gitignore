@@ -1,0 +1,97 @@
+############################################
+# Python cache and bytecode
+############################################
+__pycache__/
+*.py[cod]
+*$py.class
+
+############################################
+# C extensions and compiled binaries
+############################################
+*.so
+*.pyd
+*.dll
+
+############################################
+# Virtual environments
+############################################
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+############################################
+# Jupyter / IPython
+############################################
+.ipynb_checkpoints/
+profile_default/
+ipython_config.py
+
+############################################
+# Testing, coverage, cache
+############################################
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+############################################
+# Logs and temporary files
+############################################
+*.log
+*.tmp
+*.bak
+*.swp
+
+############################################
+# Packaging and build artifacts
+############################################
+build/
+dist/
+*.egg-info/
+.eggs/
+wheels/
+MANIFEST
+.installed.cfg
+
+############################################
+# IDE / editor files
+############################################
+.idea/
+.vscode/
+.spyderproject
+.spyproject
+.ropeproject
+
+############################################
+# Operating system files
+############################################
+.DS_Store
+Thumbs.db
+
+############################################
+# Machine learning models and checkpoints
+############################################
+Models/
+checkpoints/
+*.model
+*.joblib
+*.pkl
+
+############################################
+# Computational intermediates
+############################################
+Adjoint/
+*.fsp
+
+############################################
+# Figures and plots (temporary/debug only)
+############################################
+figures/tmp/
+plots/debug/
