@@ -50,9 +50,6 @@ The repository includes:
 ├── README.md
 └── LICENSE
 
-yaml
-
----
 
 ## 3. Requirements
 
@@ -62,19 +59,7 @@ Install the required dependencies using:
 
 ```bash
 pip install -r requirements.txt
-Main dependencies include:
 
-numpy
-
-pandas
-
-scikit-learn
-
-scipy
-
-matplotlib
-
-seaborn
 
 4. Machine Learning Workflow
 Enzyme-derived prior extraction
