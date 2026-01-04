@@ -23,9 +23,8 @@ The repository includes:
 
 ---
 
-2. Repository Structure
-
-.
+2.## Project Structure
+```shell
 ├── data/
 │ ├── enzyme_priors/ # Extracted structural and kinetic descriptors from natural AHL lactonases
 │ ├── catalyst_features/ # Feature matrices for dual-atom nanozyme candidates
